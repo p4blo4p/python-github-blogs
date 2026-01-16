@@ -19,7 +19,7 @@ class GeminiClient:
         try:
             self.client = google_genai.Client(api_key=GEMINI_API_KEY)
             # Usamos 'gemini-2.0-flash-exp' por velocidad, o 'gemini-1.5-flash' por estabilidad
-            self.model = 'gemini-1.5-flash-001'
+            self.model = 'gemini-2.0-flash-lite'
             logger.info("✅ Cliente Gemini cargado correctamente")
         except Exception as e:
             logger.error(f"Error iniciando cliente Gemini: {e}")
