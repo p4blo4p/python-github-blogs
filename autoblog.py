@@ -6,7 +6,7 @@ import re
 import datetime
 import argparse
 import logging
-import google.generativeai as genai
+import google.genai as genai
 from jinja2 import Environment, FileSystemLoader
 
 # --- LOGGING CONFIG ---
