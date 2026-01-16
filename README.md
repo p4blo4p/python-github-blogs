@@ -24,6 +24,15 @@ Este token da permiso al bot para escribir en tus repositorios.
 3.  Copia el código de la llave.
 
 ### 3. Configurar Secrets en tu Repo
+
+export GEMINI_API_KEY="AIza..."     # Gratis hasta quota
+export OPENAI_API_KEY="sk-..."      # $0.15/1M tokens (gpt-4o-mini)
+export ANTHROPIC_API_KEY="claude-..." # $0.25/1M tokens (claude-3-haiku)
+export GH_TOKEN="ghp_..."
+
+
+
+
 1.  Ve al repositorio donde tienes este código en GitHub.
 2.  Haz clic en la pestaña superior **Settings**.
 3.  En el menú izquierdo ve a **Secrets and variables** > **Actions**.
