@@ -1,0 +1,20 @@
+blog:
+  title: "Mi Blog de IA"
+  author: "Tu Nombre"
+  description: "Un blog generado parcialmente por Inteligencia Artificial."
+  url: "https://tu-usuario.github.io"
+
+github:
+  repo: "usuario/mi-repositorio-de-posts"
+  token: "" 
+  path: "posts" 
+
+output:
+  dir: "site"
+
+# NUEVA SECCIÓN IA
+ai:
+  # Tu API Key de OpenAI (sk-...)
+  api_key: "sk-tu-api-key-aqui"
+  model: "gpt-4o-mini" # O gpt-3.5-turbo para más barato
+  language: "es"       # Idioma de generación

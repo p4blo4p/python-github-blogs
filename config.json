@@ -1,21 +1,18 @@
 [
   {
-    "name": "WealthChain AI",
-    "source_repo": "user/wealth-source",
-    "prod_repo": "user/wealth-web",
-    "keywords": "DeFi, AI Trading, Wealth Management, Crypto Trends",
-    "domain": "https://wealthchain.ai",
-    "languages": ["en", "de", "es"],
-    "ga4": "G-WLT123",
-    "adsense": "pub-1234567890"
+    "name": "Tech News AI",
+    "keywords": "artificial intelligence, python programming, software engineering",
+    "source_repo": "tu-usuario/tech-content", 
+    "prod_repo": "tu-usuario/tech-blog", 
+    "languages": ["es", "en"],
+    "domain": "https://tu-usuario.github.io/tech-blog"
   },
-  { "name": "Biohack Pro", "keywords": "Nootropics, Longevity, Health tech", "languages": ["en", "jp"] },
-  { "name": "CyberArmor", "keywords": "Cybersecurity, Privacy, VPN", "languages": ["en", "fr"] },
-  { "name": "EcoHouse", "keywords": "Solar Energy, Smart Home, Sustainability", "languages": ["en", "de"] },
-  { "name": "AI Productivity", "keywords": "AI Tools, Automation, SaaS", "languages": ["en", "es"] },
-  { "name": "PetHealth", "keywords": "Pet Nutrition, Vet Tech, Smart Gadgets", "languages": ["en", "es"] },
-  { "name": "NomadGear", "keywords": "Remote Work, Travel Tech, Nomad Life", "languages": ["en", "pt"] },
-  { "name": "GreenWheels", "keywords": "Electric Vehicles, E-Mobility, EV Reviews", "languages": ["en", "no"] },
-  { "name": "ZenWellness", "keywords": "Mental Health tech, Mindfulness, Sleep tech", "languages": ["en", "jp"] },
-  { "name": "UrbanGrow", "keywords": "Hydroponics, Vertical Farming, Urban Tech", "languages": ["en", "nl"] }
+  {
+    "name": "Crypto Daily",
+    "keywords": "bitcoin, ethereum, defi trends",
+    "source_repo": "tu-usuario/crypto-content",
+    "prod_repo": "tu-usuario/crypto-blog",
+    "languages": ["en"],
+    "domain": "https://tu-usuario.github.io/crypto-blog"
+  }
 ]

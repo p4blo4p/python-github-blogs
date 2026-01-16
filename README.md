@@ -52,3 +52,46 @@ python autoblog.py --fetch --build --incremental
 
 ## 🚀 Despliegue Automático
 Una vez configurados los Secrets, GitHub Actions ejecutará el script cada 4 horas automáticamente. Puedes ver el progreso en la pestaña **Actions** de tu repositorio.
+
+
+Guía: Cómo conseguir las API Keys (GRATIS)
+Aquí te explico cómo obtener las claves para los servicios anteriores. No necesitas tarjeta de crédito para las opciones recomendadas (Groq y Hugging Face).
+
+1. Groq (Opción #1 Recomendada)
+Es el más rápido y actualmente muy generoso con su nivel gratuito (Free Tier).
+
+Ve a console.groq.com.
+Regístrate (puedes usar tu cuenta de Google o GitHub).
+En el menú izquierdo, haz clic en "Keys".
+Crea una nueva Key y cópiala.
+En tu terminal:
+bash
+
+# En Linux/Mac
+export GROQ_API_KEY="gsk_...."
+
+# En Windows (PowerShell)
+setx GROQ_API_KEY "gsk_...."
+(Nota: Te da muchas llamadas gratis por día)
+2. Hugging Face (Opción #2)
+Excelente si quieres probar diferentes modelos de código abierto.
+
+Ve a huggingface.co/settings/tokens.
+Regístrate si no tienes cuenta.
+Crea un nuevo token (selecciona tipo "Read" o "Write" según prefieras).
+Copia el token (empieza por hf_...).
+En tu terminal:
+bash
+
+export HF_API_KEY="hf_...."
+(Nota: El nivel gratuito tiene límites, pero es suficiente para generar varios posts al día)
+3. Google Gemini (Opción #3)
+Google suele dar créditos gratuitos iniciales o una cuota de uso libre para su modelo Flash.
+
+Ve a aistudio.google.com/app/apikey.
+Haz clic en "Create API Key".
+Copia la key.
+En tu terminal:
+bash
+
+export GEMINI_API_KEY="AIzaSy...

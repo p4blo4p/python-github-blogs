@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ post.title }} - {{ config.name }}{% endblock %}
+{% block content %}
+    <article class="post">
+        <a href="{{ domain }}/">← Volver</a>
+        <h1>{{ post.title }}</h1>
+        <div class="meta">{{ post.date.strftime('%Y-%m-%d') }}</div>
+        <div class="content">
+            {{ post.content | safe }}
+        </div>
+    </article>
+{% endblock %}
