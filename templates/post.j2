@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="{{ post.lang }}">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ post.title }} | {{ niche.name }}</title>
+    <link rel="stylesheet" href="../assets/styles.css">
+    {% if ga4 %}<script async src="https://www.googletagmanager.com/gtag/js?id={{ ga4 }}"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','{{ ga4 }}');</script>{% endif %}
+</head>
+<body>
+    <article class="container">
+        <header><img src="{{ post.img }}" class="hero-img"><h1>{{ post.title }}</h1><div class="meta">{{ post.date }}</div></header>
+        <div class="content">{{ post.content | safe }}</div>
+    </article>
+</body>
+</html>
