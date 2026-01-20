@@ -1,4 +1,4 @@
-name: AI Blog Generator
+name: Main AI Blog Generator
 
 on:
   # Disparador 1: Automático (Cron Job)
