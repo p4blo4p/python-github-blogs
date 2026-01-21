@@ -1,5 +1,25 @@
 [
   {
+    "name": "Tech News AI",
+    "keywords": "artificial intelligence, python programming, software engineering",
+    "repo": "tu-usuario/board-games-news",
+    "source_branch": "main",
+    "prod_branch": "gh-pages",
+    "languages": ["es", "en"],
+    "domain": "https://tu-usuario.github.io/tech-blog",
+    "content_type": "trending"  // 可选值: "trending" 或 "evergreen"
+  },
+  {
+    "name": "Crypto Daily",
+    "keywords": "bitcoin, ethereum, defi trends",
+    "repo": "p4blo4p/crypto-evergreen",
+    "source_branch": "main",
+    "prod_branch": "gh-pages",
+    "languages": ["en"],
+    "domain": "https://p4blo4p.github.io/crypto-evergreen",
+    "content_type": "evergreen"
+  },
+  {
     "name": "Juegos de Mesa - Actualidad",
     "keywords": "board games news, new releases, gaming industry, tabletop gaming trends",
     "repo": "tu-usuario/board-games-news",
