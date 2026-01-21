@@ -15,7 +15,7 @@
     "repo": "p4blo4p/crypto-evergreen",
     "source_branch": "main",
     "prod_branch": "gh-pages",
-    "languages": ["en"],
+    "languages": ["en", "es"],
     "domain": "https://p4blo4p.github.io/crypto-evergreen",
     "content_type": "evergreen"
   },
