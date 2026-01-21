@@ -14,7 +14,7 @@ from core.parser import ContentParser
  
 # Config
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = loggin.getLogger(__name)
+logger = logging.getLogger(__name)
 GH_TOKEN = os.getenv("GH_TOKEN")
  
 class BlogSelector:
