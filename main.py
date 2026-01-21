@@ -207,88 +207,88 @@ class AutoBlogEngine:
         logger.info(f"📤 Recuerda subir estos archivos a GitHub: {self.repo}")
     
         def build_site(self, github_token=None):
-        """Paso 2: Leer Source Branch -> Renderizar HTML -> Subir a Prod Branch"""
-        if not self.github or not self.parser or not self.jinja_env:
-            logger.error("❌ Faltan dependencias (github/parser/jinja) para construir el sitio.")
-            return
+            """Paso 2: Leer Source Branch -> Renderizar HTML -> Subir a Prod Branch"""
+            if not self.github or not self.parser or not self.jinja_env:
+                logger.error("❌ Faltan dependencias (github/parser/jinja) para construir el sitio.")
+                return
 
-        logger.info(f"🏗️  [{self.niche_name}] Construyendo sitio estático...")
-        
-        # Aseguramos que el token esté configurado en el cliente de GitHub
-        if github_token:
-            self.github.set_auth_token(github_token) # Asegúrate de que tu GitHubManager tenga este método
-        elif not self.github.is_authenticated(): # Método hipotético de verificación
-            logger.warning("⚠️ No se detectó token de GitHub. El deploy podría fallar.")
-
-        # 2.1 Obtener todos los archivos MD del source branch
-        try:
-            files = self.github.get_files(self.repo, "content", branch=self.source_branch)
-        except Exception as e:
-            logger.error(f"❌ Error obteniendo archivos del repo: {e}")
-            return
-
-        posts = []
-        
-        for name, url in files.items():
-            if name.endswith('.md'):
-                try:
-                    raw_md = self.github.get_file_content(url)
-                    post = self.parser.parse(raw_md, name)
-                    posts.append(post)
-                except Exception as e:
-                    logger.warning(f"⚠️ Error parseando {name}: {e}")
-        
-        if not posts:
-            logger.warning("⚠️ No se encontraron posts para renderizar.")
-            return
+            logger.info(f"🏗️  [{self.niche_name}] Construyendo sitio estático...")
             
-        # Ordenar por fecha (reciente primero)
-        posts.sort(key=lambda x: x.get('date', datetime.datetime.now()), reverse=True)
-        
-        # Función auxiliar para intentar subir y manejar errores
-        def deploy_file(path, content, msg):
+            # Aseguramos que el token esté configurado en el cliente de GitHub
+            if github_token:
+                self.github.set_auth_token(github_token) # Asegúrate de que tu GitHubManager tenga este método
+            elif not self.github.is_authenticated(): # Método hipotético de verificación
+                logger.warning("⚠️ No se detectó token de GitHub. El deploy podría fallar.")
+
+            # 2.1 Obtener todos los archivos MD del source branch
             try:
-                # Si deploy_site no lanza excepción, confiamos en que funcionó
-                self.github.deploy_site(self.repo, path, content, branch=self.prod_branch)
+                files = self.github.get_files(self.repo, "content", branch=self.source_branch)
             except Exception as e:
-                logger.error(f"❌ Fallo crítico subiendo {path}: {e}")
-                # Relanzamos la excepción para detener el proceso y no mostrar el mensaje de éxito
-                raise Exception(f"Detenido por error en subida de {path}")
+                logger.error(f"❌ Error obteniendo archivos del repo: {e}")
+                return
 
-        # 2.2 Renderizar Index
-        try:
-            index_template = self.jinja_env.get_template('index.html')
-            index_html = index_template.render(
-                config=self.config, 
-                posts=posts, 
-                domain=self.domain
-            )
-            deploy_file("index.html", index_html, "Update index")
-        except Exception as e:
-            logger.error(f"❌ No se pudo desplegar el index: {e}")
-            return
-
-        # 2.3 Renderizar Posts Individuales
-        try:
-            post_template = self.jinja_env.get_template('post.html')
+            posts = []
             
-            for post in posts:
-                date_path = post['date'].strftime('%Y/%m')
-                full_path = f"{date_path}/{post['slug']}" if self.domain else post['slug']
+            for name, url in files.items():
+                if name.endswith('.md'):
+                    try:
+                        raw_md = self.github.get_file_content(url)
+                        post = self.parser.parse(raw_md, name)
+                        posts.append(post)
+                    except Exception as e:
+                        logger.warning(f"⚠️ Error parseando {name}: {e}")
+            
+            if not posts:
+                logger.warning("⚠️ No se encontraron posts para renderizar.")
+                return
                 
-                post_html = post_template.render(
+            # Ordenar por fecha (reciente primero)
+            posts.sort(key=lambda x: x.get('date', datetime.datetime.now()), reverse=True)
+            
+            # Función auxiliar para intentar subir y manejar errores
+            def deploy_file(path, content, msg):
+                try:
+                    # Si deploy_site no lanza excepción, confiamos en que funcionó
+                    self.github.deploy_site(self.repo, path, content, branch=self.prod_branch)
+                except Exception as e:
+                    logger.error(f"❌ Fallo crítico subiendo {path}: {e}")
+                    # Relanzamos la excepción para detener el proceso y no mostrar el mensaje de éxito
+                    raise Exception(f"Detenido por error en subida de {path}")
+
+            # 2.2 Renderizar Index
+            try:
+                index_template = self.jinja_env.get_template('index.html')
+                index_html = index_template.render(
                     config=self.config, 
-                    post=post, 
+                    posts=posts, 
                     domain=self.domain
                 )
-                deploy_file(full_path, post_html, f"Update post {post['slug']}")
+                deploy_file("index.html", index_html, "Update index")
+            except Exception as e:
+                logger.error(f"❌ No se pudo desplegar el index: {e}")
+                return
+
+            # 2.3 Renderizar Posts Individuales
+            try:
+                post_template = self.jinja_env.get_template('post.html')
                 
-            # Solo llegamos aquí si todo fue bien
-            logger.info(f"✅ Sitio {self.niche_name} desplegado exitosamente en rama {self.prod_branch}")
-            self._save_state()
-        except Exception as e:
-            logger.error(f"❌ Error general en el renderizado de posts: {e}")
-            
+                for post in posts:
+                    date_path = post['date'].strftime('%Y/%m')
+                    full_path = f"{date_path}/{post['slug']}" if self.domain else post['slug']
+                    
+                    post_html = post_template.render(
+                        config=self.config, 
+                        post=post, 
+                        domain=self.domain
+                    )
+                    deploy_file(full_path, post_html, f"Update post {post['slug']}")
+                    
+                # Solo llegamos aquí si todo fue bien
+                logger.info(f"✅ Sitio {self.niche_name} desplegado exitosamente en rama {self.prod_branch}")
+                self._save_state()
+            except Exception as e:
+                logger.error(f"❌ Error general en el renderizado de posts: {e}")
+
 async def main():
     parser = argparse.ArgumentParser(
         description="Motor de Blogs Autónomos - Versión Corregida",
