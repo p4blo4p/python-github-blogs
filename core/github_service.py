@@ -28,9 +28,14 @@ class GitHubManager:
                 if data and branch != "main":
                     data["branch"] = branch
                 return requests.put(url, headers=self.headers, json=data)
+        # Busca donde capturas el error y cámbialo así para depurar:
         except Exception as e:
-            logger.error(f"GitHub API Error ({method} {repo}/{path}@{branch}): {e}")
-            return None
+            # IMPORTANTE: Imprime el error completo para saber qué pasa
+            import traceback
+            print(traceback.format_exc()) 
+            logger.error(f"❌ Error subiendo: {e}")
+            # Opcional: Descomenta la siguiente línea para que el programa se detenga
+            # raise e 
  
     def get_files(self, repo, path="", branch="main"):
         """Lista archivos recursivamente en una rama específica"""
