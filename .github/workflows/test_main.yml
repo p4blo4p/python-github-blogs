@@ -16,6 +16,8 @@ on:
           - fetch
           - build
           - all
+permissions:
+  contents: write  # Necesario para crear archivos en repos
  
 jobs:
   execute:
