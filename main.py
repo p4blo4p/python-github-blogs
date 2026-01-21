@@ -220,8 +220,9 @@ class AutoBlogEngine:
         self.state = self._load_state()
         
         logger.info(f"🎯 Blog configurado: {self.niche_name}")
-        logger.info(f"📂 Source: {self.source_repo}")
-        logger.info(f"🌐 Prod: {self.prod_repo}")
+        logger.info(f"📂 Source: {self.repo}")
+        logger.info(f"🌐 Prod: {self.source_branch}")
+        logger.info(f"🌐 Prod: {self.prod_branch}")
         logger.info(f"🗣️  Idiomas: {self.languages}")
     
     def _load_state(self):
@@ -326,7 +327,7 @@ class AutoBlogEngine:
                 # 1.4 上传到 Source Repo
                 remote_path = f"content/{lang}/{slug}.md"
                 self.github.create_file(
-                    self.source_repo, 
+                    self.repo, 
                     remote_path, 
                     content, 
                     f"cms: auto-generated {slug} ({lang}) - {content_type}"
@@ -335,7 +336,7 @@ class AutoBlogEngine:
         except Exception as e:
             logging.error(f"❌ Error en generación para {self.niche_name}: {e}")
  
-    def _upload_to_source_repo(self, lang, slug, content, headline):
+    def _upload_to_repo(self, lang, slug, content, headline):
         """Sube contenido generado al repositorio fuente (puede ejecutarse localmente)"""
         # Implementación básica - puedes mejorar con GitHub API local
         content_path = Path(f"generated_content/{self.niche_name}/{lang}")
@@ -346,7 +347,7 @@ class AutoBlogEngine:
             f.write(content)
         
         logger.info(f"💾 Guardado localmente: {file_path}")
-        logger.info(f"📤 Recuerda subir estos archivos a GitHub: {self.source_repo}")
+        logger.info(f"📤 Recuerda subir estos archivos a GitHub: {self.repo}")
     
     def build_site(self, github_token):
         """
