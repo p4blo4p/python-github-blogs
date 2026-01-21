@@ -1,16 +1,20 @@
-# main_improved.py
 import os
-import json
-import argparse
 import asyncio
+import argparse
 import logging
-import re
+import json
 import datetime
-from pathlib import Path
+import re
+from jinja2 import Environment, FileSystemLoader
  
-# Configuración de logging
+# Importar nuestros módulos
+from core.ai_service import GeminiClient
+from core.github_service import GitHubManager
+from core.parser import ContentParser
+ 
+# Config
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+GH_TOKEN = os.getenv("GH_TOKEN")
  
 class BlogSelector:
     """Gestiona la selección y carga de configuraciones de blogs"""
@@ -41,7 +45,163 @@ class BlogSelector:
         return self.blogs
  
 class AutoBlogEngine:
-    """Motor de blogs mejorado con selección específica"""
+    def __init__(self, config):
+        self.config = config
+        self.niche_name = config['name']
+        self.repo = config['repo']  # Nuevo: repo común
+        self.source_branch = config.get('source_branch', 'main')  # Rama para contenido
+        self.prod_branch = config.get('prod_branch', 'gh-pages')  # Rama para producción
+        self.languages = config.get('languages', ['en'])
+        self.domain = config.get('domain', "")
+        
+        # Inicializar clientes
+        self.ai = GeminiClient()
+        self.github = GitHubManager()
+        self.parser = ContentParser()
+        self.jinja_env = Environment(loader=FileSystemLoader('templates'))
+ 
+    async def fetch_and_generate(self):
+        """Paso 1: Investigar tendencia -> Generar Artículos -> Subir al Source Branch"""
+        logging.info(f"🚀 [{self.niche_name}] Iniciando ciclo de generación...")
+        
+        try:
+            # Obtener el tipo de contenido
+            content_type = self.config.get('content_type', 'trending')
+            current_date = datetime.datetime.now().strftime('%Y-%m-%d')
+            
+            # 1.1 Generar topic_prompt según content_type
+            if content_type == 'trending':
+                topic_prompt = f"""Today's date is {current_date}. Identify a single, trending news topic relevant to: {self.config['keywords']}. 
+                Focus on recent developments, breaking news, or emerging trends. 
+                Output ONLY the headline in English."""
+                logging.info("🔥 Analizando tendencias de actualidad...")
+            else:  # evergreen
+                topic_prompt = f"""Identify a timeless, evergreen topic about: {self.config['keywords']}. 
+                Focus on fundamental concepts, best practices, or educational content that remains relevant over time.
+                Output ONLY the headline in English."""
+                logging.info("🌲 Generando contenido evergreen...")
+            
+            # 1.2 Generar el headline
+            headline = await self.ai.generate(topic_prompt)
+            headline = headline.strip().replace('"', '').replace("'", "")
+            slug = re.sub(r'[^a-z0-9-]', '', re.sub(r'\s+', '-', headline.lower()))
+            
+            logging.info(f"📰 Tópico seleccionado: {headline}")
+ 
+            # 1.3 Generar artículos por idioma
+            for lang in self.languages:
+                logging.info(f"  ✍️  Generando en {lang}...")
+                
+                # Personalizar article_prompt según content_type
+                if content_type == 'trending':
+                    article_prompt = f"""
+                    Write a professional, SEO-optimized blog post in {lang} about: '{headline}'.
+                    
+                    Today's date is {current_date}. Focus on recent developments, news, or emerging trends.
+                    
+                    Requirements:
+                    - Use Markdown.
+                    - Include a title line (H1).
+                    - Include a summary in the frontmatter metadata.
+                    - Add relevant tags in the frontmatter.
+                    - Technical and expert tone.
+                    - Length: ~800 words.
+                    - Include current date references where appropriate.
+                    
+                    Format Example:
+                    ---
+                    title: "{headline}"
+                    date: {current_date}
+                    tags: [{self.config['keywords'].split(',')[0]}]
+                    summary: "A brief summary here."
+                    ---
+                    
+                    [Content starts here...]
+                    """
+                else:  # evergreen
+                    article_prompt = f"""
+                    Write a professional, SEO-optimized blog post in {lang} about: '{headline}'.
+                    
+                    Focus on timeless content, fundamental concepts, and best practices that remain valuable over time.
+                    
+                    Requirements:
+                    - Use Markdown.
+                    - Include a title line (H1).
+                    - Include a summary in the frontmatter metadata.
+                    - Add relevant tags in the frontmatter.
+                    - Educational and expert tone.
+                    - Length: ~800 words.
+                    - Avoid time-sensitive references.
+                    
+                    Format Example:
+                    ---
+                    title: "{headline}"
+                    date: {current_date}
+                    tags: [{self.config['keywords'].split(',')[0]}]
+                    summary: "A brief summary here."
+                    ---
+                    
+                    [Content starts here...]
+                    """
+                
+                content = await self.ai.generate(article_prompt)
+                
+                # 1.4 Subir al Source Branch (Headless CMS)
+                # Estructura: content/{lang}/{slug}.md
+                remote_path = f"content/{lang}/{slug}.md"
+                self.github.create_file(
+                    self.repo, 
+                    remote_path, 
+                    content, 
+                    f"cms: auto-generated {slug} ({lang}) - {content_type}",
+                    branch=self.source_branch
+                )
+                
+        except Exception as e:
+            logging.error(f"❌ Error en generación para {self.niche_name}: {e}")
+ 
+    def build_site(self):
+        """Paso 2: Leer Source Branch -> Renderizar HTML -> Subir a Prod Branch"""
+        logging.info(f"🏗️  [{self.niche_name}] Construyendo sitio estático...")
+        
+        # 2.1 Obtener todos los archivos MD del source branch
+        files = self.github.get_files(self.repo, "content", branch=self.source_branch)
+        posts = []
+        
+        for name, url in files.items():
+            if name.endswith('.md'):
+                raw_md = self.github.get_file_content(url)
+                post = self.parser.parse(raw_md, name)
+                posts.append(post)
+        
+        # Ordenar por fecha (reciente primero)
+        posts.sort(key=lambda x: x['date'], reverse=True)
+        
+        # 2.2 Renderizar Index
+        index_template = self.jinja_env.get_template('index.html')
+        index_html = index_template.render(
+            config=self.config, 
+            posts=posts, 
+            domain=self.domain
+        )
+        self.github.deploy_site(self.repo, "index.html", index_html, branch=self.prod_branch)
+        
+        # 2.3 Renderizar Posts Individuales
+        post_template = self.jinja_env.get_template('post.html')
+        
+        for post in posts:
+            # Crear subcarpetas si es necesario (ej: 2023/10/post.html)
+            date_path = post['date'].strftime('%Y/%m')
+            full_path = f"{date_path}/{post['slug']}" if self.domain else post['slug']
+            
+            post_html = post_template.render(
+                config=self.config, 
+                post=post, 
+                domain=self.domain
+            )
+            self.github.deploy_site(self.repo, full_path, post_html, branch=self.prod_branch)
+            
+        logging.info(f"✅ Sitio {self.niche_name} desplegado exitosamente en rama {self.prod_branch}")    """Motor de blogs mejorado con selección específica"""
     
     def __init__(self, config):
         self.config = config
@@ -73,59 +233,103 @@ class AutoBlogEngine:
         with open(self.state_file, 'w') as f:
             json.dump(self.state, f)
     
-    async def fetch_and_generate(self, ai_client):
-        """
-        FASE 1 (Ejecuta localmente en Termux con IA):
-        - Analiza tendencias
-        - Genera contenido con IA
-        - Sube al repositorio fuente como CMS
-        """
-        logger.info(f"🚀 [{self.niche_name}] FASE 1: Generando contenido con IA...")
+    async def fetch_and_generate(self):
+        """Paso 1: Investigar tendencia -> Generar Artículos -> Subir al Source Repo"""
+        logging.info(f"🚀 [{self.niche_name}] Iniciando ciclo de generación...")
         
         try:
-            # 1. Detectar tendencias
-            topic_prompt = f"Identify a trending topic for: {self.config['keywords']}. Output ONLY the headline in English."
-            logger.info("🧠 Analizando tendencias...")
+            # 获取内容类型，默认为 trending
+            content_type = self.config.get('content_type', 'trending')
+            current_date = datetime.datetime.now().strftime('%Y-%m-%d')
             
-            headline = await ai_client.generate(topic_prompt)
+            # 1.1 根据 content_type 生成不同的 topic_prompt
+            if content_type == 'trending':
+                topic_prompt = f"""Today's date is {current_date}. Identify a single, trending news topic relevant to: {self.config['keywords']}. 
+                Focus on recent developments, breaking news, or emerging trends. 
+                Output ONLY the headline in English."""
+                logging.info("🔥 Analizando tendencias de actualidad...")
+            else:  # evergreen
+                topic_prompt = f"""Identify a timeless, evergreen topic about: {self.config['keywords']}. 
+                Focus on fundamental concepts, best practices, or educational content that remains relevant over time.
+                Output ONLY the headline in English."""
+                logging.info("🌲 Generando contenido evergreen...")
+            
+            # 1.2 生成标题
+            headline = await self.ai.generate(topic_prompt)
             headline = headline.strip().replace('"', '').replace("'", "")
             slug = re.sub(r'[^a-z0-9-]', '', re.sub(r'\s+', '-', headline.lower()))
             
-            logger.info(f"📰 Tópico detectado: {headline}")
- 
-            # 2. Generar artículos por idioma
+            logging.info(f"📰 Tópico seleccionado: {headline}")
+    
+            # 1.3 生成文章时，根据 content_type 调整提示词
             for lang in self.languages:
-                logger.info(f"  ✍️  Generando en {lang}...")
+                logging.info(f"  ✍️  Generando en {lang}...")
                 
-                article_prompt = f"""
-                Write a professional, SEO-optimized blog post in {lang} about: '{headline}'
+                # 根据内容类型定制 article_prompt
+                if content_type == 'trending':
+                    article_prompt = f"""
+                    Write a professional, SEO-optimized blog post in {lang} about: '{headline}'.
+                    
+                    Today's date is {current_date}. Focus on recent developments, news, or emerging trends.
+                    
+                    Requirements:
+                    - Use Markdown.
+                    - Include a title line (H1).
+                    - Include a summary in the frontmatter metadata.
+                    - Add relevant tags in the frontmatter.
+                    - Technical and expert tone.
+                    - Length: ~800 words.
+                    - Include current date references where appropriate.
+                    
+                    Format Example:
+                    ---
+                    title: "{headline}"
+                    date: {current_date}
+                    tags: [{self.config['keywords'].split(',')[0]}]
+                    summary: "A brief summary here."
+                    ---
+                    
+                    [Content starts here...]
+                    """
+                else:  # evergreen
+                    article_prompt = f"""
+                    Write a professional, SEO-optimized blog post in {lang} about: '{headline}'.
+                    
+                    Focus on timeless content, fundamental concepts, and best practices that remain valuable over time.
+                    
+                    Requirements:
+                    - Use Markdown.
+                    - Include a title line (H1).
+                    - Include a summary in the frontmatter metadata.
+                    - Add relevant tags in the frontmatter.
+                    - Educational and expert tone.
+                    - Length: ~800 words.
+                    - Avoid time-sensitive references.
+                    
+                    Format Example:
+                    ---
+                    title: "{headline}"
+                    date: {current_date}
+                    tags: [{self.config['keywords'].split(',')[0]}]
+                    summary: "A brief summary here."
+                    ---
+                    
+                    [Content starts here...]
+                    """
                 
-                Requirements:
-                - Use Markdown format
-                - Include frontmatter metadata
-                - Expert tone, ~800 words
+                content = await self.ai.generate(article_prompt)
                 
-                Frontmatter format:
-                ---
-                title: "{headline}"
-                date: {datetime.datetime.now().strftime('%Y-%m-%d')}
-                tags: [{self.config['keywords'].split(',')[0]}]
-                summary: "Professional blog post about {headline}"
-                ---
+                # 1.4 上传到 Source Repo
+                remote_path = f"content/{lang}/{slug}.md"
+                self.github.create_file(
+                    self.source_repo, 
+                    remote_path, 
+                    content, 
+                    f"cms: auto-generated {slug} ({lang}) - {content_type}"
+                )
                 
-                [Content here...]
-                """
-                
-                content = await ai_client.generate(article_prompt)
-                
-                # 3. Subir al source repo (esto también puede hacerse localmente)
-                self._upload_to_source_repo(lang, slug, content, headline)
-                
-            logger.info(f"✅ [{self.niche_name}] Contenido generado y subido exitosamente")
-            
         except Exception as e:
-            logger.error(f"❌ Error en generación: {e}")
-            raise
+            logging.error(f"❌ Error en generación para {self.niche_name}: {e}")
  
     def _upload_to_source_repo(self, lang, slug, content, headline):
         """Sube contenido generado al repositorio fuente (puede ejecutarse localmente)"""

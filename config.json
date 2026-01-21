@@ -1,18 +1,102 @@
 [
   {
-    "name": "Tech News AI",
-    "keywords": "artificial intelligence, python programming, software engineering",
-    "source_repo": "tu-usuario/tech-content", 
-    "prod_repo": "tu-usuario/tech-blog", 
+    "name": "Juegos de Mesa - Actualidad",
+    "keywords": "board games news, new releases, gaming industry, tabletop gaming trends",
+    "repo": "tu-usuario/board-games-news",
+    "source_branch": "main",
+    "prod_branch": "gh-pages",
     "languages": ["es", "en"],
-    "domain": "https://tu-usuario.github.io/tech-blog"
+    "domain": "https://tu-usuario.github.io/board-games-news",
+    "content_type": "trending"
   },
   {
-    "name": "Crypto Daily",
-    "keywords": "bitcoin, ethereum, defi trends",
-    "source_repo": "tu-usuario/crypto-content",
-    "prod_repo": "tu-usuario/crypto-blog",
-    "languages": ["en"],
-    "domain": "https://tu-usuario.github.io/crypto-blog"
+    "name": "Juegos de Mesa - Evergreen",
+    "keywords": "board games strategies, classic board games, game mechanics, tabletop tutorials",
+    "repo": "tu-usuario/board-games-tutorials",
+    "source_branch": "main",
+    "prod_branch": "gh-pages",
+    "languages": ["es", "en"],
+    "domain": "https://tu-usuario.github.io/board-games-tutorials",
+    "content_type": "evergreen"
+  },
+  {
+    "name": "Decoración - Evergreen",
+    "keywords": "interior design, home decor tips, diy decoration, minimalist design",
+    "repo": "tu-usuario/home-decor",
+    "source_branch": "main",
+    "prod_branch": "gh-pages",
+    "languages": ["es", "en"],
+    "domain": "https://tu-usuario.github.io/home-decor",
+    "content_type": "evergreen"
+  },
+  {
+    "name": "Libros - Actualidad",
+    "keywords": "book releases, literary news, bestsellers, publishing industry",
+    "repo": "tu-usuario/books-news",
+    "source_branch": "main",
+    "prod_branch": "gh-pages",
+    "languages": ["es", "en"],
+    "domain": "https://tu-usuario.github.io/books-news",
+    "content_type": "trending"
+  },
+  {
+    "name": "Libros - Evergreen",
+    "keywords": "classic literature, book recommendations, reading guides, literary analysis",
+    "repo": "tu-usuario/classic-books",
+    "source_branch": "main",
+    "prod_branch": "gh-pages",
+    "languages": ["es", "en"],
+    "domain": "https://tu-usuario.github.io/classic-books",
+    "content_type": "evergreen"
+  },
+  {
+    "name": "Viajes - Evergreen",
+    "keywords": "travel tips, destination guides, travel planning, adventure travel",
+    "repo": "tu-usuario/travel-guides",
+    "source_branch": "main",
+    "prod_branch": "gh-pages",
+    "languages": ["es", "en"],
+    "domain": "https://tu-usuario.github.io/travel-guides",
+    "content_type": "evergreen"
+  },
+  {
+    "name": "Fútbol - Actualidad",
+    "keywords": "football news, soccer transfers, match results, league standings",
+    "repo": "tu-usuario/football-news",
+    "source_branch": "main",
+    "prod_branch": "gh-pages",
+    "languages": ["es", "en"],
+    "domain": "https://tu-usuario.github.io/football-news",
+    "content_type": "trending"
+  },
+  {
+    "name": "Chollos - Actualidad",
+    "keywords": "deals, discounts, online shopping offers, flash sales, bargain hunting",
+    "repo": "tu-usuario/daily-deals",
+    "source_branch": "main",
+    "prod_branch": "gh-pages",
+    "languages": ["es", "en"],
+    "domain": "https://tu-usuario.github.io/daily-deals",
+    "content_type": "trending"
+  },
+  {
+    "name": "Inversiones - Actualidad",
+    "keywords": "stock market news, investment trends, financial updates, market analysis",
+    "repo": "tu-usuario/investment-news",
+    "source_branch": "main",
+    "prod_branch": "gh-pages",
+    "languages": ["es", "en"],
+    "domain": "https://tu-usuario.github.io/investment-news",
+    "content_type": "trending"
+  },
+  {
+    "name": "Inversiones - Evergreen",
+    "keywords": "investment basics, personal finance, passive income, financial planning",
+    "repo": "tu-usuario/investment-education",
+    "source_branch": "main",
+    "prod_branch": "gh-pages",
+    "languages": ["es", "en"],
+    "domain": "https://tu-usuario.github.io/investment-education",
+    "content_type": "evergreen"
   }
 ]
