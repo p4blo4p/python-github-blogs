@@ -209,7 +209,7 @@ class AutoBlogEngine:
     def __init__(self, config):
         self.config = config
         self.niche_name = config['name']
-        elf.repo = config['repo']
+        self.repo = config['repo']
         self.source_branch = config['source_branch']
         self.prod_branch = config['prod_branch']
         self.languages = config.get('languages', ['es', 'en'])
