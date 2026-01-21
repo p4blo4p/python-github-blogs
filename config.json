@@ -7,7 +7,7 @@
     "prod_branch": "gh-pages",
     "languages": ["es", "en"],
     "domain": "https://tu-usuario.github.io/tech-blog",
-    "content_type": "trending"  // 可选值: "trending" 或 "evergreen"
+    "content_type": "trending"  
   },
   {
     "name": "Crypto Daily",
