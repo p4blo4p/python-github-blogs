@@ -45,6 +45,7 @@ class BlogSelector:
         return self.blogs
  
 class AutoBlogEngine:
+    """Motor de blogs mejorado con selección específica"""
     def __init__(self, config):
         self.config = config
         self.niche_name = config['name']
@@ -201,7 +202,8 @@ class AutoBlogEngine:
             )
             self.github.deploy_site(self.repo, full_path, post_html, branch=self.prod_branch)
             
-        logging.info(f"✅ Sitio {self.niche_name} desplegado exitosamente en rama {self.prod_branch}")    """Motor de blogs mejorado con selección específica"""
+        logging.info(f"✅ Sitio {self.niche_name} desplegado exitosamente en rama {self.prod_branch}")    
+        
     
     def __init__(self, config):
         self.config = config
