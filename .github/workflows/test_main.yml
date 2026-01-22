@@ -9,6 +9,10 @@ on:
   # Al no tener 'inputs:', se ejecuta directamente con los valores fijos del script.
   workflow_dispatch:
 
+  push:
+    branches:
+      - main  # Asegúrate de que tu rama principal sea 'main'. Si es 'master', cámbialo aquí.
+
 permissions:
   contents: write  # Necesario para crear archivos en el repositorio
 
@@ -35,4 +39,5 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           # Se ejecutará tanto en el horario programado como cuando pulses manualmente
-          python main.py --fetch --blog "Crypto Daily"
+          #python main.py --fetch --blog "Crypto Daily"
+          python main.py --all --blog "Crypto Daily"
