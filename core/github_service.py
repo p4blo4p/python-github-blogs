@@ -2,40 +2,46 @@ import os
 import base64
 import logging
 import requests
-import json
-import re
-import traceback
 
 GH_TOKEN = os.getenv("GH_TOKEN")
 logger = logging.getLogger(__name__)
 
 class GitHubManager:
     def __init__(self):
-        if not GH_TOKEN:
-            # Si no hay token en env, intentamos usar el de Actions (aunque suele estar en GH_TOKEN)
-            logger.warning("⚠️ GH_TOKEN no está definida explícitamente. Es posible que falle la autenticación.")
-            self.headers = {"Authorization": f"Bearer {os.getenv('GITHUB_TOKEN', '')}", "Accept": "application/vnd.github.v3+json"}
-        else:
-            # Usamos 'Bearer' que es más moderno y compatible que 'token'
-            self.headers = {"Authorization": f"Bearer {GH_TOKEN}", "Accept": "application/vnd.github.v3+json"}
+        token = GH_TOKEN or os.getenv("GITHUB_TOKEN")
+        if not token:
+            raise ValueError("❌ GH_TOKEN no definida")
+        self.headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
 
     def api_call(self, repo, path, method="GET", data=None, branch="main"):
+        """API call con manejo estricto de errores para PUT, pero flexible para GET"""
         url = f"https://api.github.com/repos/{repo}/contents/{path}"
         params = {"ref": branch} if branch != "main" else {}
         
         try:
             if method == "GET": 
                 r = requests.get(url, headers=self.headers, params=params)
-                return r.json() if r.status_code == 200 else None
+                # Si es 404 (archivo no existe), devolvemos None (es normal)
+                if r.status_code == 404:
+                    return None
+                # Si es otro error, lo lanzamos
+                r.raise_for_status()
+                return r.json()
+                
             elif method == "PUT":
                 if data and branch != "main":
                     data["branch"] = branch
-                return requests.put(url, headers=self.headers, json=data)
+                r = requests.put(url, headers=self.headers, json=data)
+                # Para PUT, cualquier error es crítico y queremos verlo
+                r.raise_for_status()
+                return r
                 
         except Exception as e:
-            print("ERROR en api_call interno:")
-            print(traceback.format_exc()) 
-            # ESTA LÍNEA ES CRUCIAL: Hace que el error suba hasta main.py
+            import traceback
+            print("!!! ERROR EN API CALL !!!")
+            print(traceback.format_exc()) # Esto imprime el error real en la consola
+            print("!!! FIN ERROR !!!")
+            # Re-lanzamos la excepción para que main.py la capture
             raise e
  
     def get_files(self, repo, path="", branch="main"):
@@ -47,13 +53,12 @@ class GitHubManager:
                 if item['type'] == 'file':
                     files[item['name']] = item['download_url']
                 elif item['type'] == 'dir':
-                    # Llamada recursiva correcta
                     sub_path = f"{path}/{item['name']}" if path else item['name']
                     files.update(self.get_files(repo, sub_path, branch=branch))
         return files
  
     def get_file_content(self, download_url):
-        """Obtiene el contenido de un archivo desde su download_url"""
+        """Obtiene el contenido de un archivo"""
         r = requests.get(download_url)
         return r.text if r.status_code == 200 else None
  
@@ -62,7 +67,8 @@ class GitHubManager:
         # Codificar en Base64
         b64_content = base64.b64encode(content.encode()).decode()
         
-        # Verificar si existe para obtener SHA (evitar conflictos)
+        # Verificar si existe para obtener SHA
+        # Esto devolverá None si es 404 (archivo nuevo)
         existing = self.api_call(repo, path, branch=branch)
         sha = existing.get('sha') if existing else None
         
@@ -73,20 +79,16 @@ class GitHubManager:
         if sha:
             data["sha"] = sha
             
-        # Esta llamada lanzará la excepción real si falla (gracias al 'raise' en api_call)
-        r = self.api_call(repo, path, "PUT", data, branch=branch)
-        
-        if r and r.status_code in [200, 201]:
+        # Aquí es donde ocurrirá el error si algo falla, y ahora lo veremos
+        try:
+            self.api_call(repo, path, "PUT", data, branch=branch)
             logger.info(f"✅ Subido a GitHub: {repo}/{path} @ {branch}")
             return True
-        else:
-            # Si llegamos aquí, r podría ser None o tener un código de error distinto
-            if r:
-                logger.error(f"❌ Error subiendo (Status {r.status_code}): {r.text}")
-            else:
-                logger.error("❌ Error subiendo: No se recibió respuesta del servidor")
+        except Exception as e:
+            logger.error(f"❌ No se pudo subir el archivo: {e}")
+            # No relanzamos aquí, pero el traceback ya se imprimió en api_call
             return False
  
     def deploy_site(self, repo, path, content, branch="gh-pages"):
-        """Sube el HTML generado al repo de producción en rama específica"""
+        """Sube el HTML generado al repo de producción"""
         return self.create_file(repo, path, content, "deploy: update site content", branch=branch)
