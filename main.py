@@ -5,6 +5,7 @@ import logging
 import json
 import datetime
 import re
+import traceback
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
  
@@ -192,7 +193,12 @@ class AutoBlogEngine:
                     self._upload_to_repo(lang, slug, content, headline)
                 
         except Exception as e:
+            
             logger.error(f"❌ Error en generación para {self.niche_name}: {e}")
+            print("--------- TRACEBACK DETALLADO ---------")
+            traceback.print_exc()
+            print("---------------------------------------")
+            
  
     def _upload_to_repo(self, lang, slug, content, headline):
         """Sube contenido generado localmente si no hay servicio de GitHub activo"""

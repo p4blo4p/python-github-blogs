@@ -4,6 +4,7 @@ import logging
 import requests
 import json
 import re
+import traceback
 
 GH_TOKEN = os.getenv("GH_TOKEN")
 logger = logging.getLogger(__name__)
@@ -19,7 +20,6 @@ class GitHubManager:
             self.headers = {"Authorization": f"Bearer {GH_TOKEN}", "Accept": "application/vnd.github.v3+json"}
 
     def api_call(self, repo, path, method="GET", data=None, branch="main"):
-        """API call con soporte para ramas específicas y mejor manejo de errores"""
         url = f"https://api.github.com/repos/{repo}/contents/{path}"
         params = {"ref": branch} if branch != "main" else {}
         
@@ -33,12 +33,9 @@ class GitHubManager:
                 return requests.put(url, headers=self.headers, json=data)
                 
         except Exception as e:
-            # IMPORTANTE: Imprimimos el traceback completo para ver qué pasa
-            import traceback
+            print("ERROR en api_call interno:")
             print(traceback.format_exc()) 
-            logger.error(f"❌ Excepción en API Call: {e}")
-            # Relanzamos la excepción para que main.py la capture y detenga la ejecución
-            # Si no relanzamos, la función devuelve None y luego da el error "Unknown"
+            # ESTA LÍNEA ES CRUCIAL: Hace que el error suba hasta main.py
             raise e
  
     def get_files(self, repo, path="", branch="main"):
