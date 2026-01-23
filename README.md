@@ -2,6 +2,11 @@
 
 Sistema de automatización masiva de blogs con IA y despliegue en GitHub Pages.
 
+## Configuración (config.json): Puedes añadir nuevas opciones a tu JSON para aprovechar las mejoras:
+"content_type": "github_trending" (para que busque repos reales) o "rss_news".
+"language_filter": "python" (para filtrar trending de Python).
+"preferred_ai": "gemini" (para definir cuál IA intentar primero).
+
 ## 🔑 Configuración de Credenciales (PASO A PASO)
 
 Para que GitHub pueda publicar automáticamente, necesitas configurar dos "Secrets".

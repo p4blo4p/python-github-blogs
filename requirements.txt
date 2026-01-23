@@ -4,3 +4,5 @@ python-frontmatter
 requests
 google-genai
 pygments
+beautifulsoup4
+feedparser

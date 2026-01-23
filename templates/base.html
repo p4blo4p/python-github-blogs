@@ -4,14 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ config.name }}{% endblock %}</title>
-    <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
-        header { border-bottom: 1px solid #eee; margin-bottom: 2rem; }
-        .post { margin-bottom: 3rem; }
-        .meta { color: #888; font-size: 0.9em; }
-        .tag { background: #eef; padding: 2px 6px; border-radius: 4px; margin-right: 5px; }
-        pre { background: #f4f4f4; padding: 10px; overflow-x: auto; }
-    </style>
+       <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    
+    <!-- SEO Básico -->
+    <meta name="description" content="{{ summary }}">
+    
+    <!-- Open Graph (Para compartir en Facebook, LinkedIn, WhatsApp) -->
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="{{ title }}">
+    <meta property="og:description" content="{{ summary }}">
+    <meta property="og:image" content="{{ image_url | default('https://picsum.photos/seed/' + slug + '/1200/630') }}">
+    <meta property="og:url" content="https://p4blo4p.github.io/python-github-blogs/blog/{{ slug }}.html">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ title }}">
+    
+    <link rel="stylesheet" href="static/style.css">
+
 </head>
 <body>
     <header>
