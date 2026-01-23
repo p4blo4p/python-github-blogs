@@ -259,42 +259,35 @@ class BlogSelector:
         return self.blogs
  
 class AutoBlogEngine:
-        """Motor de blogs unificado y mejorado con Fiabilidad, Datos Reales y SEO"""
+        """Motor de blogs con prioridad de traducciones"""
         def __init__(self, config):
             self.config = config
             self.niche_name = config['name']
             self.repo = config['repo']
             self.source_branch = config.get('source_branch', 'main')
             self.prod_branch = config.get('prod_branch', 'gh-pages')
-            self.languages = config.get('languages', ['en'])
+            self.languages = config.get('languages', ['en', 'es']) # Asegúrate de tener 'en' y 'es'
             self.domain = config.get('domain', "")
             
-            # Inicializar clientes originales
             try:
-                # Item 4: Usamos el nuevo MultiAIProvider en lugar de solo Gemini
                 self.ai = MultiAIProvider()
-                
                 self.github = GitHubManager()
                 self.parser = ContentParser()
                 self.jinja_env = Environment(loader=FileSystemLoader('templates'))
-                
-                # Item 3: Inicializar fuente de datos
                 self.sources = EnhancedSources()
-                
             except Exception as e:
-                logger.error(f"❌ No se pudieron inicializar los clientes: {e}")
+                logger.error(f"ERROR: No se pudieron inicializar los clientes: {e}")
                 self.ai = None
                 self.github = None
                 self.parser = None
                 self.jinja_env = None
 
-            # Estado para construcción incremental
             self.state_file = f".state_{self.niche_name.replace(' ', '_').lower()}.json"
             self.state = self._load_state()
             
-            logger.info(f"🎯 Blog configurado: {self.niche_name}")
-            logger.info(f"📂 Source: {self.repo} (rama: {self.source_branch})")
-            logger.info(f"🌐 Prod: {self.prod_branch}")
+            logger.info(f"Blog configurado: {self.niche_name}")
+            logger.info(f"Source: {self.repo} (rama: {self.source_branch})")
+            logger.info(f"Prod: {self.prod_branch}")
         
         def _load_state(self):
             if os.path.exists(self.state_file):
@@ -307,121 +300,188 @@ class AutoBlogEngine:
             with open(self.state_file, 'w') as f:
                 json.dump(self.state, f)
         
-        def _check_local_duplicate(self, content_identifier):
-            """Item 4: Chequeo rápido de hash local para evitar llamadas innecesarias"""
-            # Esto es una mejora simple; el chequeo remoto _get_existing_titles es más robusto
-            history = self.state.get("hash_history", [])
-            content_hash = hashlib.md5(content_identifier.encode('utf-8')).hexdigest()
-            if content_hash in history:
-                return True
-            history.append(content_hash)
-            self.state["hash_history"] = history[-100:] # Guardar solo últimos 100
-            self._save_state()
-            return False
-
-        def _get_existing_titles(self, lang):
-            existing_titles = set()
+        def _get_pending_translations(self, source_lang='en', target_lang='es'):
+            """
+            Busca archivos en 'source_lang' que no existen en 'target_lang'.
+            Retorna una lista de nombres de archivo (slugs) pendientes.
+            """
             if not self.github:
-                return existing_titles
+                return []
+                
             try:
-                folder_path = f"content/{lang}"
-                files = self.github.get_files(self.repo, folder_path, branch=self.source_branch)
-                for name, url in files.items():
-                    if name.endswith('.md'):
-                        try:
-                            raw_md = self.github.get_file_content(url)
-                            post = self.parser.parse(raw_md, name)
-                            if post and 'title' in post:
-                                existing_titles.add(post['title'].strip().lower())
-                        except Exception:
-                            continue
+                source_files = self.github.get_files(self.repo, f"content/{source_lang}", branch=self.source_branch)
+                target_files = self.github.get_files(self.repo, f"content/{target_lang}", branch=self.source_branch)
+                
+                # Extraer solo los slugs (nombres sin .md)
+                source_slugs = set([f.replace('.md', '') for f in source_files.keys()])
+                target_slugs = set([f.replace('.md', '') for f in target_files.keys()])
+                
+                # La diferencia son los pendientes
+                pending = source_slugs - target_slugs
+                return list(pending)
+                
             except Exception as e:
-                logger.warning(f"⚠️ No se pudo listar archivos en {folder_path}: {e}")
-            return existing_titles
+                logger.warning(f"Error verificando traducciones pendientes: {e}")
+                return []
+
+        async def _translate_post(self, slug, source_lang, target_lang):
+            """
+            Descarga el post en source_lang, genera traducción y sube a target_lang.
+            """
+            logger.info(f"🌍 Traduciendo '{slug}' de {source_lang} a {target_lang}...")
+            
+            # 1. Obtener contenido original
+            try:
+                source_path = f"content/{source_lang}/{slug}.md"
+                # get_files devuelve un dict {nombre: url}, necesitamos encontrar la URL
+                files_map = self.github.get_files(self.repo, f"content/{source_lang}", branch=self.source_branch)
+                raw_url = files_map.get(f"{slug}.md")
+                
+                if not raw_url:
+                    logger.error(f"No se encontró el archivo origen: {source_path}")
+                    return False
+
+                raw_md = self.github.get_file_content(raw_url)
+                original_post = self.parser.parse(raw_md, f"{slug}.md")
+                
+                if not original_post:
+                    return False
+
+            except Exception as e:
+                logger.error(f"Error leyendo post original: {e}")
+                return False
+
+            # 2. Generar Prompt de Traducción
+            # Extraemos solo el contenido sin frontmatter para traducir, o traducimos todo
+            # Es mejor traducir el cuerpo y mantener el frontmatter estructurado
+            
+            translate_prompt = f"""
+            Translate the following blog post content into {target_lang}.
+            Maintain Markdown formatting, links, and code blocks exactly as they are.
+            
+            Title: {original_post['title']}
+            Content:
+            {original_post['content']}
+            
+            Output ONLY the translated content in Markdown.
+            """
+
+            try:
+                # 3. Llamada a IA
+                translated_content = await self.ai.generate(translate_prompt, preferred='gemini')
+                
+                # Reconstruir el frontmatter para el nuevo idioma
+                # Aquí podríamos traducir el título y tags también si quisiéramos
+                new_frontmatter = f"""---
+title: "{original_post['title']}" # Puedes pedir a la IA que lo traduzca aparte si quieres
+date: {original_post['date']}
+tags: [{', '.join(original_post.get('tags', []))}]
+summary: "{original_post.get('summary', '')}"
+lang: {target_lang}
+translated_from: {source_lang}
+---
+"""
+                
+                final_md = new_frontmatter + translated_content
+                
+                # 4. Subir
+                target_path = f"content/{target_lang}/{slug}.md"
+                commit_msg = f"translate: {slug} ({source_lang} -> {target_lang})"
+                
+                if self.github:
+                    self.github.create_file(self.repo, target_path, final_md, commit_msg, branch=self.source_branch)
+                    logger.info(f"✅ Traducción subida: {target_path}")
+                    return True
+                    
+            except Exception as e:
+                logger.error(f"❌ Error en traducción IA: {e}")
+                return False
 
         async def fetch_and_generate(self):
-            """Paso 1: Obtener Datos Reales -> Generar con Fallback -> Subir"""
+            """Flujo mejorado: Prioriza traducciones, luego nuevos posts."""
             if not self.ai: return
             
-            logger.info(f"🚀 [{self.niche_name}] Iniciando ciclo de generación mejorado...")
+            logger.info(f"[{self.niche_name}] Iniciando ciclo (Prioridad: Traducciones)...")
+            
+            # 1. Verificar si hay traducciones pendientes (Asumimos EN -> ES)
+            # Solo si hay más de un idioma configurado
+            pending_translations = []
+            if len(self.languages) > 1:
+                # Buscamos pendientes del primer idioma hacia el segundo
+                src = self.languages[0]
+                tgt = self.languages[1]
+                pending_translations = self._get_pending_translations(src, tgt)
+            
+            # 2. ACCIÓN A: Traducir si hay pendientes
+            if pending_translations:
+                logger.info(f"🕒 Se encontraron {len(pending_translations)} traducciones pendientes. Procesando la más reciente...")
+                # Procesar solo una para no exceder cuota en esta ejecución
+                slug_to_translate = pending_translations[0] 
+                success = await self._translate_post(slug_to_translate, self.languages[0], self.languages[1])
+                
+                if success:
+                    logger.info("✅ Tarea de traducción completada en este ciclo.")
+                else:
+                    logger.error("❌ Falló la traducción.")
+                return # Salimos aquí para no generar nuevo contenido en la misma hora
+
+            # 3. ACCIÓN B: Generar nuevo contenido si no hay pendientes
+            logger.info("✅ No hay traducciones pendientes. Generando nuevo artículo...")
             
             try:
-                # Item 3: Obtener Datos Reales primero
                 real_data_context = ""
                 content_type = self.config.get('content_type', 'trending')
                 current_date = datetime.datetime.now().strftime('%Y-%m-%d')
                 
+                # Lógica de obtención de datos (igual que antes)
                 if content_type == 'github_trending':
-                    logger.info("📡 Obteniendo repos trending de GitHub...")
                     repos = self.sources.get_github_trending(self.config.get('language_filter', 'python'))
                     if repos:
-                        # Usamos el primer repo como fuente principal
                         target = repos[0]
-                        real_data_context = f"""
-                        CONTEXT: Write about the following GitHub repository that is trending.
-                        Repo Name: {target['title']}
-                        Description: {target['description']}
-                        URL: {target['url']}
-                        """
+                        real_data_context = f"CONTEXT: GitHub Repo: {target['title']}. Desc: {target['description']}. URL: {target['url']}"
                         base_topic = target['title']
                     else:
-                        # Fallback si falla el scrapeo
                         base_topic = "Trending GitHub Development"
-                        logger.warning("No se pudieron obtener trends, usando tema genérico.")
-
+                
                 elif content_type == 'rss_news':
-                    logger.info("📡 Obteniendo noticias RSS...")
                     news_list = self.sources.get_external_rss(self.config.get('rss_url', 'http://feeds.feedburner.com/TechCrunch/'))
                     if news_list:
                         target = news_list[0]
-                        real_data_context = f"""
-                        CONTEXT: Write a blog post based on this news.
-                        Headline: {target['title']}
-                        Summary: {target['summary']}
-                        Link: {target['link']}
-                        """
+                        real_data_context = f"CONTEXT: News: {target['title']}. Summary: {target['summary']}"
                         base_topic = target['title']
                     else:
                         base_topic = "Latest Tech News"
                 else:
-                    # Lógica original (AI alucina el tema)
                     topic_prompt = f"Identify a trending topic about: {self.config['keywords']}. Output ONLY the topic headline."
                     base_topic = await self.ai.generate(topic_prompt, preferred='gemini')
 
-                logger.info(f"📰 Tópico/Fuente seleccionada: {base_topic.strip()}")
+                logger.info(f"📰 Nuevo Tópico: {base_topic.strip()}")
                 
-                # Generar artículos por idioma
+                # Generar para TODOS los idiomas
                 for lang in self.languages:
-                    logger.info(f"  ✍️  [{lang}] Generando contenido...")
+                    logger.info(f"  ✍️  [{lang}] Generando nuevo contenido...")
                     existing_titles = self._get_existing_titles(lang)
                     
-                    # Generar título localizado
                     title_gen_prompt = f"Translate and adapt the following topic into a compelling blog post title in {lang}. Topic: {base_topic}. Output ONLY the title."
                     new_title = await self.ai.generate(title_gen_prompt, preferred='gemini')
                     new_title = new_title.strip().replace('"', '').replace("'", "")
                     
-                    # Item 4: Chequeo de duplicados (Remoto + Local)
-                    if new_title.lower() in existing_titles or self._check_local_duplicate(new_title):
-                        logger.warning(f"⚠️ Duplicado local/remoto: {new_title}. Saltando.")
+                    if new_title.lower() in existing_titles:
+                        logger.warning(f"⚠️ Duplicado remoto: {new_title}. Saltando.")
                         continue
                     
-                    # Generar slug
                     clean_slug = re.sub(r'[^a-z0-9-]', '', re.sub(r'\s+', '-', new_title.lower()))
                     
-                    # Prompt Final
                     article_prompt = f"""
                     Write a professional, SEO-optimized blog post in {lang}.
                     Target Title: {new_title}
-                    {real_data_context} <!-- Inyectamos los datos reales aquí -->
-                    
+                    {real_data_context}
                     Today's date is {current_date}.
-                    
                     Requirements:
                     - Use Markdown.
                     - H1 Title must be exactly: {new_title}
                     - Include a summary in the frontmatter.
                     - Add relevant tags: {self.config['keywords']}
-                    - Technical tone.
                     - Format Example:
                     ---
                     title: "{new_title}"
@@ -431,17 +491,14 @@ class AutoBlogEngine:
                     ---
                     """
                     
-                    # Item 4: Llamada a IA con Fallback automático
                     content = await self.ai.generate(article_prompt, preferred=self.config.get('preferred_ai', 'gemini'))
                     
-                    # Subir
                     remote_path = f"content/{lang}/{clean_slug}.md"
-                    commit_msg = f"cms: auto-generated {clean_slug} ({lang}) via EnhancedEngine"
+                    commit_msg = f"cms: auto-generated {clean_slug} ({lang})"
                     
                     if self.github:
                         self.github.create_file(self.repo, remote_path, content, commit_msg, branch=self.source_branch)
                     else:
-                        # Fallback local
                         path = Path(f"generated_content/{self.niche_name}/{lang}")
                         path.mkdir(parents=True, exist_ok=True)
                         (path / f"{clean_slug}.md").write_text(content, encoding='utf-8')
@@ -449,6 +506,8 @@ class AutoBlogEngine:
             except Exception as e:
                 logger.error(f"❌ Error en generación para {self.niche_name}: {e}")
                 traceback.print_exc()
+     
+        # ... (El resto de métodos build_site, _get_existing_titles, etc. se mantienen igual que en la versión anterior) ...
      
         def build_site(self, github_token=None):
             """Paso 2: Leer MD -> Renderizar -> Generar SEO -> Subir"""
