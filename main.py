@@ -193,7 +193,7 @@ class MultiAIProvider:
                 continue
                 
             try:
-                logger.info(f🤖 Intentando generar con: {model.upper()}")
+                logger.info(f"🤖 Intentando generar con: {model.upper()}")
                 
                 if model == "gemini":
                     # El GeminiClient original es async
