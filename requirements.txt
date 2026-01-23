@@ -3,6 +3,7 @@ markdown
 python-frontmatter
 requests
 google-genai
+google-generativeai
 pygments
 beautifulsoup4
 feedparser
